@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>User Details</h1>
+
+<p>Full name: {{ user.full_name }}</p>
+<a href="/users/{{ user.id }}/edit" class="btn btn-primary">Edit</a>
+
+<form action="/users/{{ user.id }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this user?');">
+    <button class="btn btn-danger" type="submit">Delete</button>
+</form>
+
+<div style="max-width: 200px;">
+    <img src="{{ url_for('static', filename=(user.image_url if user.image_url else 'path_to_default.jpg')) }}" class="img-fluid" alt="User Image">
+</div>
+{% endblock %}
