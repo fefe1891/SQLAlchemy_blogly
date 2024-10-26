@@ -8,8 +8,24 @@
 </head>
 <body>
     <div class="container">
+        <nav>
+            <a href="{{ url_for('user_home_page') }}">Home</a> |
+            <a href="{{ url_for('list_users') }}">Users</a>
+        </nav>
+        <hr>
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-success" role="alert">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
     </div>
+
     
 </body>
 </html>

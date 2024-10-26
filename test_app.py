@@ -2,7 +2,7 @@ import os
 import unittest
 from datetime import datetime
 from app import app
-from models import db, User
+from models import db, User, Post
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -67,6 +67,8 @@ class UserTestCase(unittest.TestCase):
 
         self.assertEqual(resp.status_code, 200)
         self.assertIn("<p>Full name: Testy McTestface</p>", html)
+        self.assertIn("<p>Created at: ", html)
+        self.assertRegex(html, r"[A-Z][a-z]+ \d{2}, \d{4}, \d{2}:\d{2} (AM|PM)</p>")
 
     def test_users_new(self):
         """Test adding a new user."""
@@ -140,6 +142,110 @@ class UserTestCase(unittest.TestCase):
 
         # Check if the user's data was edited correctly
         self.assertIn("EditedName EditedSurname", html)
+        
+        
+    def test_post_creation(self):
+        """Test creation of a new post."""
+        logging.debug("Starting test_post_creation")
+        
+        # Create a new user first
+        new_user = User(
+            first_name="Testy", last_name="McTestface", image_url="some_url"
+        )
+        
+        with app.app_context():
+            db.session.add(new_user)
+            db.session.commit()
+            new_user2 = User.query.get(new_user.id)
+            
+        # Mock data for the new post
+        post_data = {
+            "title": "Test Post",
+            "content": "Test Content",
+            "user_id": new_user2.id
+        }
+        
+        # Use test client to send post request
+        resp = self.client.post(f"/users/{new_user2.id}/posts/new", data=post_data, follow_redirects=True)
+        
+        resp = self.client.get(f"/users/{new_user2.id}")
+        html = resp.get_data(as_text=True)
+        
+        # Check if request was successful
+        self.assertEqual(resp.status_code, 200)
+        
+        # Check if new title and content are in HTML
+        self.assertIn("Test Post", html)
+        
+        
+    def test_edit_post(self):
+        """Test editing an exisiting post."""
+        logging.debug("Starting test_edit_post")
+        
+        # Create a new user first
+        new_user = User(first_name="Testy", last_name="McTestface", image_url="some_url")
+        
+        with app.app_context():
+            db.session.add(new_user)
+            db.session.commit()
+            new_user = User.query.get(new_user.id)
+            
+            # Create a post for the user
+            new_post = Post(title="Test title", content="Test content", user_id=new_user.id)
+            
+            with app.app_context():
+                db.session.add(new_post)
+                db.session.commit()
+                new_post = Post.query.get(new_post.id)
+                
+                # Mock data for the edited post
+                edit_post_data = {
+                    "title": "Edited title",
+                    "content": "Edited content",
+                }
+                
+                # Use test client to send POST request
+                resp = self.client.post(f"/posts/{new_post.id}/edit", data=edit_post_data, follow_redirects=True)
+                html = resp.get_data(as_text=True)
+                
+                # Check if request was successful
+                self.assertEqual(resp.status_code, 200)
+                
+                # Check if the post's data was edited correctly
+                self.assertIn("Edited title", html)
+                self.assertIn("Edited content", html)
+                
+                
+    def test_flash_messages(self):
+        """Tests if flash messages are shown after editing a post."""
+        
+        # Open app context for the whole function
+        with app.app_context():
+            # Create a new user and a new post
+            user = User(first_name="Test", last_name="User", image_url="")
+            post = Post(title="Test Post", content="Test Content", user=user)
+            
+            db.session.add(user)
+            db.session.add(post)
+            db.session.commit()
+            
+            # Query the post instance 
+            post = Post.query.get(post.id)
+            
+            # Mock data for edited post
+            edit_post_data = {"title": "Edited", "content": "Content"}
+            
+            # Use test client to sent post request
+            with self.client as c:
+                resp = c.post(f"/posts/{post.id}/edit", data=edit_post_data, follow_redirects=True)
+                
+                html = resp.get_data(as_text=True)
+                
+                # Check if request was successful
+                self.assertEqual(resp.status_code, 200)
+                
+                # Check if flash messages were shown
+                self.assertIn("Edited", html)
 
     if __name__ == "__main__":
         unittest.main()

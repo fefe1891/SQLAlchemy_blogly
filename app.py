@@ -1,8 +1,8 @@
 """Blogly application."""
 
-from flask import Flask, render_template, redirect, request
+from flask import Flask, render_template, redirect, request, flash, url_for
 from flask_debugtoolbar import DebugToolbarExtension
-from models import db, connect_db, User
+from models import db, connect_db, User, Post
 
 app = Flask(__name__)
 
@@ -24,8 +24,9 @@ init_db()
 
 @app.route('/')
 def user_home_page():
-    """Redirect to list of users."""
-    return redirect('/users')
+    """Homepage with 5 most recent posts."""
+    posts = Post.query.order_by(Post.created_at.desc()).limit(5).all()
+    return render_template('homepage.html', posts=posts)
 
 @app.route('/users')
 def list_users():
@@ -51,6 +52,7 @@ def update_user(user_id):
     
     db.session.commit()
     
+    flash('User successfully updated!')
     return redirect('/users')
 
 @app.route('/users/<int:user_id>/delete', methods=['POST'])
@@ -60,6 +62,93 @@ def delete_user(user_id):
     db.session.commit()
     
     return redirect('/users')
+
+
+
+@app.route('/users/<int:user_id>/posts/new', methods=['GET', 'POST'])
+def create_new_post(user_id):
+    """Create a new post for a user."""
+    # Handle Post request
+    if request.method == 'POST':
+        title = request.form['title']
+        content = request.form['content']
+        
+        # Fetch user id from form data
+        user_id = request.form['user_id']
+        
+        # Validate if user exists
+        user = User.query.get(user_id)
+        if user is None:
+            flash("User not found.")
+            return redirect(url_for('list_users')) # Redirecting to the list users page if invalid user
+        # Create new post
+        post = Post(title=title, content=content, user_id=user_id)
+        
+        # Add new post to the database
+        db.session.add(post)
+        db.session.commit()
+        
+        # Go to the user details page
+        return redirect(url_for('show_user', user_id=user_id))
+        
+    # Handle GET request
+    else:
+        # Fetch user for 'GET" request
+        user = User.query.get_or_404(user_id)
+        return render_template('posts_new_form.html', user=user)
+
+
+
+@app.route('/posts/<int:post_id>', methods=['GET'])
+def posts_show(post_id):
+    """Show post."""
+    
+    post = Post.query.get_or_404(post_id)
+    
+    return render_template('post_detail.html', post=post)
+
+
+@app.route('/posts/<int:post_id>/edit', methods=['GET', 'POST'])
+def edit_post(post_id):
+    """Show form to edit a post."""
+    
+    post = Post.query.get_or_404(post_id)
+    
+    if request.method == 'POST':
+        post.title = request.form['title']
+        post.content = request.form['content']
+        db.session.commit()
+        return redirect(f'/posts/{post_id}')
+    
+    
+    return render_template('edit_post.html', post=post)
+
+
+@app.route('/posts/<int:post_id>/edit', methods=['POST'])
+def update_post(post_id):
+    """Handle editing of a post. Redirect to the post view."""
+    
+    post = Post.query.get_or_404(post_id)
+    post.title = request.form['title']
+    post.content = request.form['content']
+    
+    db.session.commit()
+    
+    flash("Post edited successfully")
+    
+    return redirect(f'/posts/{post_id}')
+
+
+@app.route('/posts/<int:post_id>/delete', methods=['POST'])
+def delete_post(post_id):
+    """Delete the post."""
+    
+    Post.query.filter_by(id=post_id).delete()
+    db.session.commit()
+    
+    flash("Post deleted successfully")
+    
+    return redirect('/')
 
 @app.route('/users/new', methods=['GET'])
 def users_new_form():
@@ -85,4 +174,11 @@ def users_new():
 def show_user(user_id):
     """Show about the given user."""
     user = User.query.get_or_404(user_id)
-    return render_template('user_details.html', user=user)
+    posts = Post.query.filter_by(user_id=user_id).all()
+    return render_template('user_details.html', user=user, posts=posts)
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    """Return a custom 404 error."""
+    return render_template('404.html'), 404

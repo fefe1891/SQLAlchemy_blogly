@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Add New Post</h1>
+
+<form action="{{ url_for('create_new_post', user_id=user.id) }}" method="POST">
+    <div class="form-group">
+        <label for="user_full_name">Author:</label>
+        <input type="text" id="user_full_name" name="user_full_name" value="{{ user.full_name }}" readonly>
+        <input type="hidden" id="user_id" name="user_id" value="{{ user.id }}">
+    </div>
+    <div class="form-group">
+        <label for="title">Title</label>
+        <input class="form-control" id="title" name="title" required>
+    </div>
+    <div class="form-group">
+        <label for="content">Content</label>
+        <textarea class="form-control" id="content" name="content" rows="3"></textarea>
+    </div>
+    <button class="btn btn-primary" type="submit">Create Post</button>
+</form>
+
+{% endblock %}
