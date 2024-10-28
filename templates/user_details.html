@@ -17,7 +17,12 @@
 <h2>Posts</h2>
 <ul>
     {% for post in posts %}
-    <li><a href="/posts/{{post.id}}">{{post.title}}</a> - {{post.created_at.strftime("%B %d, %Y, %I:%M %p")}}</li>
+    <li>
+        <a href="/posts/{{post.id}}">{{post.title}}</a> - {{post.created_at.strftime("%B %d, %Y, %I:%M %p")}}
+        {% for tag in post.tags %}
+        <span class="badge badge-primary">{{tag.name}}</span>
+        {% endfor %}
+    </li>
     {% endfor %}
 </ul>
 <a href="{{ url_for('create_new_post', user_id=user.id) }}" class="btn btn-primary">Add Post</a>

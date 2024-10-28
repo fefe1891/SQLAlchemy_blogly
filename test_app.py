@@ -1,8 +1,9 @@
 import os
 import unittest
+from bs4 import BeautifulSoup
 from datetime import datetime
 from app import app
-from models import db, User, Post
+from models import db, User, Post, Tag
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -246,6 +247,97 @@ class UserTestCase(unittest.TestCase):
                 
                 # Check if flash messages were shown
                 self.assertIn("Edited", html)
+                
+                
+class TagTestCase(unittest.TestCase):
+    def setUp(self):
+        """Setup test client before each test."""
+        app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql:///blogly_test"
+        self.client = app.test_client()
+        
+        with app.app_context():
+            db.create_all()
+            
+            
+    def test_tag_creation(self):
+        """Test creation of a new tag."""
+        # Define a name with a current timestamp
+        tag_name = "python" + datetime.now().strftime("%Y%m%d%H%M%S")
+        # Define a new tag to the database
+        with app.app_context():
+            new_tag = Tag(name=tag_name)
+            # Code for attaching posts to tag should be here
+            db.session.add(new_tag)
+            db.session.commit()
+            
+            tag = Tag.query.get(new_tag.id) # Refetech the tag instance
+            
+        resp = self.client.get("/tags")
+        html = resp.get_data(as_text=True)
+        
+        # Check that response code is 200
+        self.assertEqual(resp.status_code, 200)
+        
+        # Check that the tag appears in the html of the page
+        self.assertIn("python", html)
+        
+        
+    def test_show_tag(self):
+        """Test if the show page for a tag is displayed correctly."""
+        with app.app_context():
+            new_tag = Tag(name="python")
+            db.session.add(new_tag)
+            db.session.commit()
+            
+            tag = Tag.query.get(new_tag.id)
+            
+        resp = self.client.get(f"/tags/{tag.id}")
+        html = resp.get_data(as_text=True)
+        
+        # Check that the response status code is 200
+        self.assertEqual(resp.status_code, 200)
+        
+        # Check that the tag name appears in the html of the page
+        self.assertIn("python", html)
+        
+        
+    def test_delete_tag(self):
+        """Test if deleting a tag works correctly and redirects to tags list."""
+        # Create a new tag to be deleted
+        unique_tag_name = "my_test_tag"
+        with app.app_context():
+            new_tag = Tag(name=unique_tag_name)
+            db.session.add(new_tag)
+            db.session.commit()
+            
+            tag = Tag.query.get(new_tag.id)
+            
+        # Delete the tab and verify deletion
+        with self.client as c:
+            c.post(f"/tags/{tag.id}/delete", follow_redirects=True)
+            
+            resp = c.get("/tags")
+            html = resp.get_data(as_text=True)
+            
+            # Check that the response status code is 200
+            self.assertEqual(resp.status_code, 200)
+            
+            # Parse HTML
+            soup = BeautifulSoup(html, 'html.parser')
+            
+            # Suppose the tag names are under a div with the class 'tag-names'
+            tag_div = soup.find_all('div', {'class' : 'tag-names'})
+            tag_names = [tag.text for tag in tag_div]
+            
+            # Check that the deleted tag does not appear in the html of the page
+            self.assertNotIn(unique_tag_name, html)
+            
+            
+    def tearDown(self):
+        """Cleanup the database after each test."""
+        with app.app_context():
+            db.session.remove()
+            db.drop_all()
 
     if __name__ == "__main__":
         unittest.main()

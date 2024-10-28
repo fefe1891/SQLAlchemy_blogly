@@ -26,6 +26,23 @@ class User(db.Model):
         return f"{self.first_name} {self.last_name}"
     
     
+class Tag(db.Model):
+    """Tags for the post."""
+    __tablename__ = "tag"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False, unique=True)
+    posts = db.relationship('Post', secondary='posttags', back_populates='tags', cascade='all, delete')
+    
+    
+class PostTag(db.Model):
+    """Join model for posts and tags."""
+    __tablename__ = "posttags"
+    
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), primary_key=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tag.id'), primary_key=True)
+    
+    
 
 class Post(db.Model):
     """Blog post."""
@@ -37,6 +54,7 @@ class Post(db.Model):
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.now(timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    tags = db.relationship('Tag', secondary='posttags', back_populates='posts')
 def connect_db(app):
     db.app = app
     db.init_app(app)

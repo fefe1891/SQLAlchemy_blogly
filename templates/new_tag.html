@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Add New Tag</h1>
+
+<form action="{{ url_for('new_tag') }}" method="POST">
+    <div class="form-group">
+        <label for="name">Name</label>
+        <input class="form-control" id="name" name="name" required>
+    </div>
+    <div class="form-group">
+        <label for="posts">Posts</label>
+        <select class="form-control" id="posts" name="posts" multiple>
+            {% for post in posts %}
+            <option value="{{ post.id }}">{{ post.title }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button class="btn btn-primary" type="submit">Add Tag</button>
+</form>
+{% endblock %}
